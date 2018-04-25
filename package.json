@@ -1,0 +1,32 @@
+{
+  "name": "zynga-scroller-ideia2001",
+  "version": "2.0.0",
+  "description": "Scroll and zoom component.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ideia2001/scroller.git"
+  },
+  "keywords": [
+    "scroll",
+    "scroller",
+    "scrolling",
+    "zoom",
+    "zooming",
+    "component",
+    "ideia",
+    "2001"
+  ],
+  "author": "Ideia 2001, pbakaus",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ideia2001/scroller/issues"
+  },
+  "homepage": "https://github.com/ideia2001/scroller#readme"
+}
