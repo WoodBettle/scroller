@@ -1,2 +1,6 @@
-*
-!src/
+demo/
+test/
+component.json
+index.js
+jasyproject.json
+LICENSE.txt
