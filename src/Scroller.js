@@ -204,8 +204,14 @@ var Scroller;
 		/** {Integer} Maximum allowed scroll position on x-axis */
 		__maxScrollLeft: 0,
 
+		/** {Integer} Minimum allowed scroll position on x-axis */
+		__minScrollLeft: 0,
+
 		/** {Integer} Maximum allowed scroll position on y-axis */
 		__maxScrollTop: 0,
+
+		/** {Integer} Minimum allowed scroll position on y-axis */
+		__minScrollTop: 0,
 
 		/* {Number} Scheduled left position (final position when animating) */
 		__scheduledLeft: 0,
@@ -462,11 +468,11 @@ var Scroller;
 			var oldLevel = self.__zoomLevel;
 
 			// Normalize input origin to center of viewport if not defined
-			if (originLeft == null) {
+			if (originLeft == null || !self.options.scrollingX) {
 				originLeft = self.__clientWidth / 2;
 			}
 
-			if (originTop == null) {
+			if (originTop == null || !self.options.scrollingY) {
 				originTop = self.__clientHeight / 2;
 			}
 
@@ -483,15 +489,15 @@ var Scroller;
 			// Limit x-axis
 			if (left > self.__maxScrollLeft) {
 				left = self.__maxScrollLeft;
-			} else if (left < 0) {
-				left = 0;
+			} else if (left < self.__minScrollLeft) {
+				left = self.__minScrollLeft;
 			}
 
 			// Limit y-axis
 			if (top > self.__maxScrollTop) {
 				top = self.__maxScrollTop;
-			} else if (top < 0) {
-				top = 0;
+			} else if (top < self.__minScrollTop) {
+				top = self.__minScrollTop;
 			}
 
 			// Push values out
@@ -585,8 +591,8 @@ var Scroller;
 			}
 
 			// Limit for allowed ranges
-			left = Math.max(Math.min(self.__maxScrollLeft, left), 0);
-			top = Math.max(Math.min(self.__maxScrollTop, top), 0);
+			left = Math.max(Math.min(self.__maxScrollLeft, left), self.__minScrollLeft);
+			top = Math.max(Math.min(self.__maxScrollTop, top), self.__minScrollTop);
 
 			// Don't animate when no change detected, still call publish to make sure
 			// that rendered position is really in-sync with internal data
@@ -809,8 +815,9 @@ var Scroller;
 
 					scrollLeft -= moveX * this.options.speedMultiplier;
 					var maxScrollLeft = self.__maxScrollLeft;
+					var minScrollLeft = self.__minScrollLeft;
 
-					if (scrollLeft > maxScrollLeft || scrollLeft < 0) {
+					if (scrollLeft > maxScrollLeft || scrollLeft < minScrollLeft) {
 
 						// Slow down on the edges
 						if (self.options.bouncing) {
@@ -823,7 +830,7 @@ var Scroller;
 
 						} else {
 
-							scrollLeft = 0;
+							scrollLeft = minScrollLeft;
 
 						}
 					}
@@ -834,8 +841,9 @@ var Scroller;
 
 					scrollTop -= moveY * this.options.speedMultiplier;
 					var maxScrollTop = self.__maxScrollTop;
+					var minScrollTop = self.__minScrollTop;
 
-					if (scrollTop > maxScrollTop || scrollTop < 0) {
+					if (scrollTop > maxScrollTop || scrollTop < minScrollTop) {
 
 						// Slow down on the edges
 						if (self.options.bouncing) {
@@ -868,7 +876,7 @@ var Scroller;
 
 						} else {
 
-							scrollTop = 0;
+							scrollTop = minScrollTop;
 
 						}
 					}
@@ -1149,8 +1157,57 @@ var Scroller;
 				zoomLevel = self.__zoomLevel;
 			}
 
-			self.__maxScrollLeft = Math.max((self.__contentWidth * zoomLevel) - self.__clientWidth, 0);
-			self.__maxScrollTop = Math.max((self.__contentHeight * zoomLevel) - self.__clientHeight, 0);
+
+			if (self.options.img) {
+
+				// pega tamanho atual da imagem
+				self.rectImg = self.rectImg ? self.rectImg : self.options.img.getBoundingClientRect();
+				var unlockScrollX = self.rectImg.width * zoomLevel > self.__clientWidth;
+				// trava scrollX caso a largura da imagem seja menor que a largura do client
+				if (!unlockScrollX)
+					self.options.scrollingX = false;
+				else
+					self.options.scrollingX = true;
+				var unlockScrollY = self.rectImg.height * zoomLevel > self.__clientHeight;
+				// trava scrollY caso a altura da imagem seja menor que a altura do client
+				if (!unlockScrollY)
+					self.options.scrollingY = false;
+				else
+					self.options.scrollingY = true;
+
+				// obtem a diferença da imagem em relação ao seu container
+				self.diffWidthInitial = self.diffWidthInitial ? self.diffWidthInitial : (self.__clientWidth - (self.rectImg.width * zoomLevel)) / 2;
+
+				// obtem a diferença da imagem em relação ao seu container
+				self.diffHeightInitial = self.diffHeightInitial ? self.diffHeightInitial : (self.__clientHeight - (self.rectImg.height * zoomLevel)) / 2;
+
+				if (unlockScrollX && self.diffWidthInitial > 0) {
+					self.__maxScrollLeft = Math.max(((self.__contentWidth - self.diffWidthInitial) * zoomLevel) - self.__clientWidth, 0);
+					self.__minScrollLeft = self.diffWidthInitial * zoomLevel;
+				} else {
+					self.__maxScrollLeft = Math.max((self.__contentWidth * zoomLevel) - self.__clientWidth, 0);
+					self.__minScrollLeft = 0;
+				}
+
+				if (unlockScrollY && self.diffHeightInitial > 0) {
+					self.__maxScrollTop = Math.max(((self.__contentHeight - self.diffHeightInitial - 5) * zoomLevel) - self.__clientHeight, 0);
+					self.__minScrollTop = self.diffHeightInitial * zoomLevel;
+				} else {
+					self.__maxScrollTop = Math.max((self.__contentHeight * zoomLevel) - self.__clientHeight, 0);
+					self.__minScrollTop = 0;
+				}
+
+			} else {
+
+				self.__maxScrollLeft = Math.max((self.__contentWidth * zoomLevel) - self.__clientWidth, 0);
+				self.__maxScrollTop = Math.max((self.__contentHeight * zoomLevel) - self.__clientHeight, 0);
+
+				self.__minScrollTop = 0;
+
+			}
+
+
+
 
 		},
 
@@ -1186,8 +1243,15 @@ var Scroller;
 
 			} else {
 
-				self.__minDecelerationScrollLeft = 0;
-				self.__minDecelerationScrollTop = 0;
+				if (self.options.img)
+					self.__minDecelerationScrollLeft = self.__minScrollLeft;
+				else
+					self.__minDecelerationScrollLeft = 0;
+					
+				if (self.options.img)
+					self.__minDecelerationScrollTop = self.__minScrollTop;
+				else
+					self.__minDecelerationScrollTop = 0;
 				self.__maxDecelerationScrollLeft = self.__maxScrollLeft;
 				self.__maxDecelerationScrollTop = self.__maxScrollTop;
 
@@ -1204,7 +1268,8 @@ var Scroller;
 			// Detect whether it's still worth to continue animating steps
 			// If we are already slow enough to not being user perceivable anymore, we stop the whole process here.
 			var verify = function () {
-				var shouldContinue = Math.abs(self.__decelerationVelocityX) >= minVelocityToKeepDecelerating || Math.abs(self.__decelerationVelocityY) >= minVelocityToKeepDecelerating;
+				// alterção
+				var shouldContinue = Math.abs(self.__decelerationVelocityX) >= minVelocityToKeepDecelerating || Math.abs(self.__decelerationVelocityY) >= minVelocityToKeepDecelerating + 0.100;
 				if (!shouldContinue) {
 					self.__didDecelerationComplete = true;
 				}
