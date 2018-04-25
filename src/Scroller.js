@@ -67,6 +67,9 @@ var Scroller;
 				when to fade out a scrollbar. */
 			scrollingComplete: NOOP,
 
+			// callback para função de scroll
+			onScroll: NOOP,
+
 			/** This configures the amount of change applied to deceleration when reaching boundaries  **/
 			penetrationDeceleration: 0.03,
 
@@ -1060,6 +1063,8 @@ var Scroller;
 		__publish: function (left, top, zoom, animate) {
 
 			var self = this;
+
+			self.options.onScroll(left, top, zoom, animate);
 
 			// Remember whether we had an animation, then we try to continue based on the current "drive" of the animation
 			var wasAnimating = self.__isAnimating;
