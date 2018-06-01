@@ -20,6 +20,7 @@ module.exports = {
         "no-unused-expressions": 0,
         "chai-friendly/no-unused-expressions": 2,
         "linebreak-style": 0,
-        "no-param-reassign": [2, { "props": true, "ignorePropertyModificationsFor": ["content"] }]
+        "no-param-reassign": [2, { "props": true, "ignorePropertyModificationsFor": ["content"] }],
+        "no-underscore-dangle": [2, { "allowAfterThis": true }]
     }
 };
