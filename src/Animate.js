@@ -23,210 +23,211 @@
  * based on the pure time difference.
  */
 
-var time = Date.now || function () {
-	return +new Date();
+const time = Date.now || function time() {
+  return +new Date();
 };
-var desiredFrames = 60;
-var millisecondsPerSecond = 1000;
-var running = {};
-var counter = 1;
+const desiredFrames = 60;
+const millisecondsPerSecond = 1000;
+let running = {};
+let counter = 1;
 
-var Animate = {
+const Animate = {
 
-	/**
-	 * A requestAnimationFrame wrapper / polyfill.
-	 *
-	 * @param callback {Function} The callback to be invoked before the next repaint.
-	 * @param root {HTMLElement} The root element for the repaint
-	 */
-	requestAnimationFrame: (function () {
+  /**
+   * A requestAnimationFrame wrapper / polyfill.
+   *
+   * @param callback {Function} The callback to be invoked before the next repaint.
+   * @param root {HTMLElement} The root element for the repaint
+   */
+  requestAnimationFrame: ((() => {
+    // Check for request animation Frame support
+    const requestFrame = global.requestAnimationFrame ||
+      global.webkitRequestAnimationFrame ||
+      global.mozRequestAnimationFrame ||
+      global.oRequestAnimationFrame;
+    let isNative = !!requestFrame;
 
-		// Check for request animation Frame support
-		var requestFrame = global.requestAnimationFrame || global.webkitRequestAnimationFrame || global.mozRequestAnimationFrame || global.oRequestAnimationFrame;
-		var isNative = !!requestFrame;
+    if (requestFrame && !/requestAnimationFrame\(\)\s*\{\s*\[native code\]\s*\}/i.test(requestFrame.toString())) {
+      isNative = false;
+    }
 
-		if (requestFrame && !/requestAnimationFrame\(\)\s*\{\s*\[native code\]\s*\}/i.test(requestFrame.toString())) {
-			isNative = false;
-		}
+    if (isNative) {
+      return (callback, root) => {
+        requestFrame(callback, root);
+      };
+    }
 
-		if (isNative) {
-			return function (callback, root) {
-				requestFrame(callback, root)
-			};
-		}
+    const TARGET_FPS = 60;
+    let requests = {};
+    let rafHandle = 1;
+    let intervalHandle = null;
+    let lastActive = +new Date();
 
-		var TARGET_FPS = 60;
-		var requests = {};
-		var requestCount = 0;
-		var rafHandle = 1;
-		var intervalHandle = null;
-		var lastActive = +new Date();
+    return (callback) => {
+      const callbackHandle = rafHandle;
+      rafHandle += 1;
 
-		return function (callback, root) {
-			var callbackHandle = rafHandle++;
+      // Store callback
+      requests[callbackHandle] = callback;
 
-			// Store callback
-			requests[callbackHandle] = callback;
-			requestCount++;
+      // Create timeout at first request
+      if (intervalHandle === null) {
+        intervalHandle = setInterval(() => {
+          const start = time();
+          const currentRequests = requests;
 
-			// Create timeout at first request
-			if (intervalHandle === null) {
+          // Reset data structure before executing callbacks
+          requests = {};
 
-				intervalHandle = setInterval(function () {
+          Object.keys(currentRequests).forEach((key) => {
+            currentRequests[key](start);
+            lastActive = start;
+          });
 
-					var time = +new Date();
-					var currentRequests = requests;
+          // Disable the timeout when nothing happens for a certain
+          // period of time
+          if (start - lastActive > 2500) {
+            clearInterval(intervalHandle);
+            intervalHandle = null;
+          }
+        }, 1000 / TARGET_FPS);
+      }
 
-					// Reset data structure before executing callbacks
-					requests = {};
-					requestCount = 0;
-
-					for (var key in currentRequests) {
-						if (currentRequests.hasOwnProperty(key)) {
-							currentRequests[key](time);
-							lastActive = time;
-						}
-					}
-
-					// Disable the timeout when nothing happens for a certain
-					// period of time
-					if (time - lastActive > 2500) {
-						clearInterval(intervalHandle);
-						intervalHandle = null;
-					}
-
-				}, 1000 / TARGET_FPS);
-			}
-
-			return callbackHandle;
-		};
-
-	})(),
+      return callbackHandle;
+    };
+  })()),
 
 
-	/**
-	 * Stops the given animation.
-	 *
-	 * @param id {Integer} Unique animation ID
-	 * @return {Boolean} Whether the animation was stopped (aka, was running before)
-	 */
-	stop: function (id) {
-		var cleared = running[id] != null;
-		if (cleared) {
-			running[id] = null;
-		}
+  /**
+   * Stops the given animation.
+   *
+   * @param id {Integer} Unique animation ID
+   * @return {Boolean} Whether the animation was stopped (aka, was running before)
+   */
+  stop: (id) => {
+    const cleared = running[id] != null;
+    if (cleared) {
+      running[id] = null;
+    }
 
-		return cleared;
-	},
-
-
-	/**
-	 * Whether the given animation is still running.
-	 *
-	 * @param id {Integer} Unique animation ID
-	 * @return {Boolean} Whether the animation is still running
-	 */
-	isRunning: function (id) {
-		return running[id] != null;
-	},
+    return cleared;
+  },
 
 
-	/**
-	 * Start the animation.
-	 *
-	 * @param stepCallback {Function} Pointer to function which is executed on every step.
-	 *   Signature of the method should be `function(percent, now, virtual) { return continueWithAnimation; }`
-	 * @param verifyCallback {Function} Executed before every animation step.
-	 *   Signature of the method should be `function() { return continueWithAnimation; }`
-	 * @param completedCallback {Function}
-	 *   Signature of the method should be `function(droppedFrames, finishedAnimation) {}`
-	 * @param duration {Integer} Milliseconds to run the animation
-	 * @param easingMethod {Function} Pointer to easing function
-	 *   Signature of the method should be `function(percent) { return modifiedValue; }`
-	 * @param root {Element ? document.body} Render root, when available. Used for internal
-	 *   usage of requestAnimationFrame.
-	 * @return {Integer} Identifier of animation. Can be used to stop it any time.
-	 */
-	start: function (stepCallback, verifyCallback, completedCallback, duration, easingMethod, root) {
+  /**
+   * Whether the given animation is still running.
+   *
+   * @param id {Integer} Unique animation ID
+   * @return {Boolean} Whether the animation is still running
+   */
+  isRunning: id => running[id] != null,
 
-		var start = time();
-		var lastFrame = start;
-		var percent = 0;
-		var dropCounter = 0;
-		var id = counter++;
 
-		if (!root) {
-			root = document.body;
-		}
+  /**
+   * Start the animation.
+   *
+   * @param stepCallback {Function} Pointer to function which is executed on every step.
+   *   Signature of the method should be
+   * `function(percent, now, virtual) { return continueWithAnimation; }`
+   * @param verifyCallback {Function} Executed before every animation step.
+   *   Signature of the method should be `function() { return continueWithAnimation; }`
+   * @param completedCallback {Function}
+   *   Signature of the method should be `function(droppedFrames, finishedAnimation) {}`
+   * @param duration {Integer} Milliseconds to run the animation
+   * @param easingMethod {Function} Pointer to easing function
+   *   Signature of the method should be `function(percent) { return modifiedValue; }`
+   * @param root {Element ? document.body} Render root, when available. Used for internal
+   *   usage of requestAnimationFrame.
+   * @return {Integer} Identifier of animation. Can be used to stop it any time.
+   */
+  start: (stepCallback, verifyCallback, completedCallback, duration, easingMethod, r) => {
+    let root = r;
+    const start = time();
+    let lastFrame = start;
+    let percent = 0;
+    let dropCounter = 0;
+    counter += 1;
+    const id = counter;
 
-		// Compacting running db automatically every few new animations
-		if (id % 20 === 0) {
-			var newRunning = {};
-			for (var usedId in running) {
-				newRunning[usedId] = true;
-			}
-			running = newRunning;
-		}
+    if (!root) {
+      root = document.body;
+    }
 
-		// This is the internal step method which is called every few milliseconds
-		var step = function (virtual) {
+    // Compacting running db automatically every few new animations
+    if (id % 20 === 0) {
+      const newRunning = {};
+      Object.keys(running).forEach((usedId) => {
+        newRunning[usedId] = true;
+      });
+      running = newRunning;
+    }
 
-			// Normalize virtual value
-			var render = virtual !== true;
+    // This is the internal step method which is called every few milliseconds
+    const step = function step(virtual) {
+      // Normalize virtual value
+      const render = virtual !== true;
 
-			// Get current time
-			var now = time();
+      // Get current time
+      const now = time();
 
-			// Verification is executed before next animation step
-			if (!running[id] || (verifyCallback && !verifyCallback(id))) {
+      // Verification is executed before next animation step
+      if (!running[id] || (verifyCallback && !verifyCallback(id))) {
+        running[id] = null;
+        if (completedCallback) {
+          completedCallback(
+            desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)),
+            id,
+            false,
+          );
+        }
+        return;
+      }
 
-				running[id] = null;
-				completedCallback && completedCallback(desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)), id, false);
-				return;
+      // For the current rendering to apply let's update omitted steps in memory.
+      // This is important to bring internal state variables up-to-date with progress in time.
+      if (render) {
+        const droppedFrames =
+          Math.round((now - lastFrame) / (millisecondsPerSecond / desiredFrames)) - 1;
+        for (let j = 0; j < Math.min(droppedFrames, 4); j += 1) {
+          step(true);
+          dropCounter += 1;
+        }
+      }
 
-			}
+      // Compute percent value
+      if (duration) {
+        percent = (now - start) / duration;
+        if (percent > 1) {
+          percent = 1;
+        }
+      }
 
-			// For the current rendering to apply let's update omitted steps in memory.
-			// This is important to bring internal state variables up-to-date with progress in time.
-			if (render) {
+      // Execute step callback, then...
+      const value = easingMethod ? easingMethod(percent) : percent;
+      if ((stepCallback(value, now, render) === false || percent === 1) && render) {
+        running[id] = null;
+        if (completedCallback) {
+          completedCallback(
+            desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)),
+            id,
+            percent === 1 || duration == null,
+          );
+        }
+      } else if (render) {
+        lastFrame = now;
+        Animate.requestAnimationFrame(step, root);
+      }
+    };
 
-				var droppedFrames = Math.round((now - lastFrame) / (millisecondsPerSecond / desiredFrames)) - 1;
-				for (var j = 0; j < Math.min(droppedFrames, 4); j++) {
-					step(true);
-					dropCounter++;
-				}
+    // Mark as running
+    running[id] = true;
 
-			}
+    // Init first step
+    Animate.requestAnimationFrame(step, root);
 
-			// Compute percent value
-			if (duration) {
-				percent = (now - start) / duration;
-				if (percent > 1) {
-					percent = 1;
-				}
-			}
-
-			// Execute step callback, then...
-			var value = easingMethod ? easingMethod(percent) : percent;
-			if ((stepCallback(value, now, render) === false || percent === 1) && render) {
-				running[id] = null;
-				completedCallback && completedCallback(desiredFrames - (dropCounter / ((now - start) / millisecondsPerSecond)), id, percent === 1 || duration == null);
-			} else if (render) {
-				lastFrame = now;
-				Animate.requestAnimationFrame(step, root);
-			}
-		};
-
-		// Mark as running
-		running[id] = true;
-
-		// Init first step
-		Animate.requestAnimationFrame(step, root);
-
-		// Return unique animation ID
-		return id;
-	}
+    // Return unique animation ID
+    return id;
+  },
 };
 
 export default Animate;
-
