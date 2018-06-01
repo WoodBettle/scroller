@@ -1,5 +1,5 @@
 {
-  "name": "zynga-scroller-ideia2001",
+  "name": "zynga-scroller-woodbettle-es6",
   "version": "2.0.1",
   "description": "Scroll and zoom component.",
   "main": "index.js",
@@ -20,8 +20,8 @@
     "zoom",
     "zooming",
     "component",
-    "ideia",
-    "2001"
+    "woodbettle",
+    "es6"
   ],
   "author": "Ideia 2001, pbakaus",
   "license": "MIT",
