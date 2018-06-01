@@ -1,5 +1,9 @@
+import Animate from './src/Animate';
+import Scroller from './src/Scroller';
+import ScrollRender from './src/ScrollRender';
 
-require('./src/Animate');
-require('./src/Scroller');
-
-module.exports = Scroller;
+export {
+  Scroller,
+  Animate,
+  ScrollRender,
+};
