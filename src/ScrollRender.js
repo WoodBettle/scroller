@@ -3,7 +3,7 @@ function ScrollRender(content, forceIsTranslate) {
     const docStyle = document.documentElement.style;
 
     let engine;
-    if (global.opera && Object.prototype.toString.call(global.opera) === '[object Opera]') {
+    if (global && global.opera && Object.prototype.toString.call(global.opera) === '[object Opera]') {
       engine = 'presto';
     } else if ('MozAppearance' in docStyle) {
       engine = 'gecko';
