@@ -13,11 +13,13 @@ module.exports = {
         "it": true,
         "chai": true,
         "describe": true,
-        "beforeEach": true
+        "beforeEach": true,
+        "navigator": true
     },
     "rules": {
         "no-unused-expressions": 0,
         "chai-friendly/no-unused-expressions": 2,
-        "linebreak-style": 0
+        "linebreak-style": 0,
+        "no-param-reassign": [2, { "props": true, "ignorePropertyModificationsFor": ["content"] }]
     }
 };
